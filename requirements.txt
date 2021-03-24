@@ -1,1 +1,4 @@
 setuptools>=40.0
+cloudshell-networking-cisco>=6.2,<7.0
+cloudshell-shell-flows>=1.0,<2.0
+cloudshell-cli>=4.0,<5.0
