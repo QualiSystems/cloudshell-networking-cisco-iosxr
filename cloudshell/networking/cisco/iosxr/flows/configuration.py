@@ -1,6 +1,11 @@
 from cloudshell.networking.cisco.flows.cisco_configuration_flow import (
     CiscoConfigurationFlow,
 )
+from cloudshell.shell.flows.configuration.basic_flow import (
+    ConfigurationType,
+    RestoreMethod,
+)
+from cloudshell.shell.flows.utils.url import AbstractUrlWithPosixPath
 
 from cloudshell.networking.cisco.iosxr.command_actions.system import (
     CiscoIOSXRSystemActions,
@@ -18,9 +23,9 @@ class CiscoIOSXRConfigurationFlow(CiscoConfigurationFlow):
 
     def _restore_flow(
         self,
-        path: str,
-        configuration_type: str,
-        restore_method: str,
+        path: AbstractUrlWithPosixPath,
+        configuration_type: ConfigurationType,
+        restore_method: RestoreMethod,
         vrf_management_name: str,
     ):
         """Execute flow which save selected file to the provided destination.
@@ -34,32 +39,25 @@ class CiscoIOSXRConfigurationFlow(CiscoConfigurationFlow):
                                    values are startup and running
         :param vrf_management_name: Virtual Routing and Forwarding Name
         """
-        if "-config" not in configuration_type:
-            configuration_type += "-config"
+        if configuration_type != ConfigurationType.RUNNING:
+            raise Exception("Startup configuration is not supported by IOS-XR")
 
         with self._cli_handler.get_cli_service(
             self._cli_handler.enable_mode
         ) as enable_session:
-            system_actions = self._get_system_actions(enable_session)
-            if "startup" in configuration_type:
-                raise Exception("Startup configuration is not supported by IOS-XR")
-
-            elif "running" in configuration_type:
-                if restore_method == "override":
-                    with enable_session.enter_mode(
-                        self._cli_handler.config_mode
-                    ) as config_session:
-                        restore_action = CiscoIOSXRSystemActions(
-                            config_session, self._logger
-                        )
-                        restore_action.load(source_file=path, vrf=vrf_management_name)
-                        restore_action.replace_config()
-                else:
-                    system_actions.copy(
-                        source=path,
-                        destination=configuration_type,
-                        vrf=vrf_management_name,
-                        action_map=system_actions.prepare_action_map(
-                            path, configuration_type
-                        ),
+            if restore_method == RestoreMethod.OVERRIDE:
+                with enable_session.enter_mode(
+                    self._cli_handler.config_mode
+                ) as config_session:
+                    restore_action = CiscoIOSXRSystemActions(
+                        config_session, self._logger
                     )
+                    restore_action.load(source_file=path, vrf=vrf_management_name)
+                    restore_action.replace_config()
+            else:
+                super()._restore_flow(
+                    path,
+                    configuration_type,
+                    restore_method,
+                    vrf_management_name,
+                )

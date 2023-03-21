@@ -8,7 +8,7 @@ if tuple(map(int, setuptools_version.split(".")[:2])) < (40, 0):
 
     python = sys.executable
     try:
-        s = os.system('{} -m pip install "setuptools>=40"'.format(python))
+        s = os.system(f'{python} -m pip install "setuptools>=40"')
         if s != 0:
             raise Exception
     except Exception:
@@ -38,5 +38,6 @@ setup(
     version=version_from_file,
     package_data={"": ["*.txt"]},
     description="QualiSystems networking Cisco IOS XR package",
+    long_description="QualiSystems networking Cisco IOS XR package",
     include_package_data=True,
 )

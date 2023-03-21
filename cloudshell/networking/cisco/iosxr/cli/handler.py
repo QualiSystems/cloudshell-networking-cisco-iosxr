@@ -10,7 +10,7 @@ from cloudshell.networking.cisco.iosxr.cli.command_modes import (
 
 class CiscoIOSXRCli(CiscoCli):
     def get_cli_handler(self, resource_config, logger):
-        return CiscoIOSXRCliHandler(self.cli, resource_config, logger)
+        return CiscoIOSXRCliHandler.from_config(resource_config, logger, self.cli)
 
 
 class CiscoIOSXRCliHandler(CiscoCliHandler):

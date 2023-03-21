@@ -17,7 +17,7 @@ class CiscoIOSXRConnectivityFlow(CiscoConnectivityFlow):
     def _get_iface_actions(self, config_session):
         return CiscoIOSXRIFaceActions(config_session, self._logger)
 
-    def _add_vlan_flow(self, vlan_range, port_mode, full_name, qnq, c_tag, vm_uid=None):
+    def _add_vlan_flow(self, vlan_range, port_mode, full_name, qnq, c_tag):
         self._logger.info(f"Add VLAN(s) {vlan_range} configuration started")
 
         with self._cli_handler.get_cli_service(
@@ -29,7 +29,7 @@ class CiscoIOSXRConnectivityFlow(CiscoConnectivityFlow):
             port_name = iface_actions.get_port_name(full_name)
 
             if port_name and "-" not in vlan_range:
-                port_name += ".{0}".format(vlan_range)
+                port_name += f".{vlan_range}"
             else:
                 raise Exception("Vlan range is not supported for IOS XR devices")
 
@@ -47,16 +47,7 @@ class CiscoIOSXRConnectivityFlow(CiscoConnectivityFlow):
         self._logger.info(msg)
         return f"[ OK ] {msg}"
 
-    def _remove_all_vlan_flow(self, full_name, vm_uid=None):
-        super()._remove_all_vlan_flow(full_name, vm_uid)
-
-        with self._cli_handler.get_cli_service(
-            self._cli_handler.config_mode
-        ) as config_session:
-            system_actions = CiscoIOSXRSystemActions(config_session, self._logger)
-            system_actions.commit()
-
-    def _remove_vlan_flow(self, vlan_range, full_name, port_mode, vm_uid=None):
+    def _remove_vlan_flow(self, vlan_range, full_name):
         self._logger.info("Remove Vlan {vlan_range} configuration started")
 
         with self._cli_handler.get_cli_service(
@@ -68,7 +59,7 @@ class CiscoIOSXRConnectivityFlow(CiscoConnectivityFlow):
             port_name = iface_action.get_port_name(full_name)
 
             if port_name and "-" not in vlan_range:
-                port_name += ".{0}".format(vlan_range)
+                port_name += f".{vlan_range}"
             else:
                 raise Exception("Vlan range is not supported for IOS XR devices")
 
@@ -77,7 +68,7 @@ class CiscoIOSXRConnectivityFlow(CiscoConnectivityFlow):
             current_config = iface_action.get_current_interface_config(port_name)
 
             if port_name in current_config:
-                raise Exception("[FAIL] VLAN(s) {} removing failed".format(vlan_range))
+                raise Exception(f"[FAIL] VLAN(s) {vlan_range} removing failed")
 
         msg = f"VLAN(s) {vlan_range} removing completed successfully"
         self._logger.info(msg)

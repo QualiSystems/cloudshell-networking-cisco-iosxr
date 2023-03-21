@@ -1,13 +1,11 @@
 import re
 import time
-from collections import OrderedDict
 
 from cloudshell.cli.command_template.command_template_executor import (
     CommandTemplateExecutor,
 )
 from cloudshell.cli.session.session_exceptions import SessionException
 from cloudshell.networking.cisco.command_actions.system_actions import SystemActions
-from cloudshell.shell.flows.utils.networking_utils import UrlParser
 
 import cloudshell.networking.cisco.iosxr.command_templates.system as sys_template
 
@@ -16,39 +14,6 @@ class CiscoIOSXRSystemActions(SystemActions):
     SUCCESS_COPY_PATTERN = (
         f"{SystemActions.SUCCESS_COPY_PATTERN}|[Uu]pdated [Cc]ommit [Dd]atabase"
     )
-
-    @staticmethod
-    def prepare_action_map(source_file, destination_file):
-        action_map = OrderedDict()
-        url = UrlParser.parse_url(destination_file)
-        dst_file_name = url.get(UrlParser.FILENAME)
-        source_file_name = UrlParser.parse_url(source_file).get(UrlParser.FILENAME)
-        action_map[
-            r"[\[\(].*{}[\)\]]".format(dst_file_name)
-        ] = lambda session, logger: session.send_line("", logger)
-
-        action_map[
-            r"[\[\(]{}[\)\]]".format(source_file_name)
-        ] = lambda session, logger: session.send_line("", logger)
-
-        host = url.get(UrlParser.HOSTNAME)
-        password = url.get(UrlParser.PASSWORD)
-        username = url.get(UrlParser.USERNAME)
-
-        if username:
-            action_map[r"[Uu]ser(name)?"] = lambda session, logger: session.send_line(
-                username, logger
-            )
-        if password:
-            action_map[r"[Pp]assword"] = lambda session, logger: session.send_line(
-                password, logger
-            )
-        if host:
-            action_map[
-                r"(?!/){}(?!/)\D*\s*$".format(host)
-            ] = lambda session, logger: session.send_line("", logger)
-
-        return action_map
 
     def load(self, source_file, vrf=None, action_map=None, error_map=None):
         load_cmd = CommandTemplateExecutor(
@@ -109,7 +74,7 @@ class CiscoIOSXRSystemActions(SystemActions):
         ).execute_command()
 
 
-class CiscoIOSXRAdminSystemActions(object):
+class CiscoIOSXRAdminSystemActions:
     SHOW_REQUEST_MAX_RETRY = 10
     RESTART_TIMEOUT = 600
     SHOW_REQUEST_TIMEOUT = 30
@@ -207,7 +172,7 @@ class CiscoIOSXRAdminSystemActions(object):
         result = ""
         while (
             re.search(
-                r"operation {} is \d+% complete".format(operation_id),
+                rf"operation {operation_id} is \d+% complete",
                 result,
                 re.IGNORECASE,
             )
@@ -228,7 +193,7 @@ class CiscoIOSXRAdminSystemActions(object):
                 self._cli_service.reconnect(self.RESTART_TIMEOUT)
 
             if not re.search(
-                r"operation {} is \d+% complete".format(operation_id),
+                rf"operation {operation_id} is \d+% complete",
                 result,
                 re.IGNORECASE,
             ):
@@ -237,6 +202,4 @@ class CiscoIOSXRAdminSystemActions(object):
             time.sleep(self.SHOW_REQUEST_TIMEOUT)
 
     def prepare_output(self, result_dict):
-        return "\n".join(
-            ["{}: {}".format(key, value) for key, value in result_dict.items()]
-        )
+        return "\n".join([f"{key}: {value}" for key, value in result_dict.items()])

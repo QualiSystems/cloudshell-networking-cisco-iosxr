@@ -3,7 +3,7 @@ import re
 from cloudshell.networking.cisco.flows.cisco_load_firmware_flow import (
     CiscoLoadFirmwareFlow,
 )
-from cloudshell.shell.flows.utils.networking_utils import UrlParser
+from cloudshell.shell.flows.utils.url import RemoteURL
 
 from cloudshell.networking.cisco.iosxr.command_actions.system import (
     CiscoIOSXRAdminSystemActions,
@@ -28,7 +28,9 @@ class CiscoIOSXRLoadFirmwareFlow(CiscoLoadFirmwareFlow):
         else:
             self._packages_to_add = packages_to_install.lower().split(" ")
 
-    def _load_firmware_flow(self, path, vrf_management_name, timeout):
+    def _load_firmware_flow(
+        self, path: RemoteURL, vrf_management_name: str, timeout: int
+    ):
         """Load a firmware onto the device.
 
         :param path: The path to the firmware file, including the firmware file name
@@ -38,16 +40,12 @@ class CiscoIOSXRLoadFirmwareFlow(CiscoLoadFirmwareFlow):
         """
         success = False
 
-        full_path_dict = UrlParser().parse_url(path)
-        firmware_file_name = full_path_dict.get(UrlParser.FILENAME)
-        password = full_path_dict.get(UrlParser.PASSWORD)
-        remote_path = path.replace("{}".format(firmware_file_name), "").rstrip("/")
+        firmware_file_name = path.filename
+        password = path.password
+        remote_path = path.safe_url.replace(firmware_file_name, "").rstrip("/")
         if vrf_management_name and vrf_management_name not in remote_path:
             remote_path = remote_path.replace(
-                "{}".format(full_path_dict.get(UrlParser.HOSTNAME)),
-                "{};{}".format(
-                    full_path_dict.get(UrlParser.HOSTNAME), vrf_management_name
-                ),
+                f"{path.host}", f"{path.host};{vrf_management_name}"
             )
 
         with self._cli_handler.get_cli_service(
@@ -56,7 +54,7 @@ class CiscoIOSXRLoadFirmwareFlow(CiscoLoadFirmwareFlow):
             admin_actions = CiscoIOSXRAdminSystemActions(enable_session, self._logger)
             try:
                 admin_actions.show_install_repository()
-                remote_path = remote_path.replace(":{}".format(password), "")
+                remote_path = remote_path.replace(f":{password}", "")
             except Exception:
                 self._sync = ""
                 self._is_old_iosxr = True
@@ -122,7 +120,7 @@ class CiscoIOSXRLoadFirmwareFlow(CiscoLoadFirmwareFlow):
         error_map = {
             r"{}/{}\S*\s*could not be found".format(
                 remote_path, firmware_file_name
-            ): "{} file not found".format(firmware_file_name)
+            ): f"{firmware_file_name} file not found"
         }
         action_map = {
             "[Pp]assword:": lambda session, logger: session.send_line(password, logger)
@@ -226,11 +224,7 @@ class CiscoIOSXRLoadFirmwareFlow(CiscoLoadFirmwareFlow):
             if match_dict.get("type").lower() == "warning":
                 package_name = re.sub("^.*:", "", match_dict.get("message"))
                 if self._packages_to_add and any(
-                    (
-                        package_name
-                        for pkg in self._packages_to_add
-                        if package_name in pkg
-                    )
+                    package_name for pkg in self._packages_to_add if package_name in pkg
                 ):
                     self._result_dict[
                         package_name
