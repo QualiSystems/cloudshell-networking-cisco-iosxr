@@ -14,6 +14,8 @@ from cloudshell.networking.cisco.iosxr.constants import IOSXR_FILE_SYSTEM
 
 
 class CiscoIOSXRConfigurationFlow(CiscoConfigurationFlow):
+    SUPPORTED_CONFIGURATION_TYPES = [ConfigurationType.RUNNING]
+
     @property
     def _file_system(self):
         return IOSXR_FILE_SYSTEM
